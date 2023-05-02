@@ -12,6 +12,7 @@ main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine
 main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine/_stdint.h
 main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/sys/_stdint.h
 main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stdbool.h
+main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stddef.h
 main.obj: ../main.h
 main.obj: ../drivers/pinout.h
 main.obj: ../utils/uartstdio.h
@@ -30,9 +31,8 @@ main.obj: ../driverlib/adc.h
 main.obj: ../driverlib/pin_map.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/driverlib/inc/hw_ints.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/driverlib/inc/hw_adc.h
-main.obj: ../FreeRTOSConfig.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/FreeRTOS.h
-main.obj: C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stddef.h
+main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOSConfig.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/projdefs.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/portable.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/deprecated_definitions.h
@@ -42,6 +42,8 @@ main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/F
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/list.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/queue.h
 main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/semphr.h
+main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/message_buffer.h
+main.obj: C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/stream_buffer.h
 
 ../main.c:
 
@@ -66,6 +68,8 @@ C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine/_stdint.h
 C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/sys/_stdint.h:
 
 C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stdbool.h:
+
+C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stddef.h:
 
 ../main.h:
 
@@ -103,11 +107,9 @@ C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_proje
 
 C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/driverlib/inc/hw_adc.h:
 
-../FreeRTOSConfig.h:
-
 C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/FreeRTOS.h:
 
-C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stddef.h:
+C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOSConfig.h:
 
 C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/projdefs.h:
 
@@ -126,4 +128,8 @@ C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_proje
 C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/queue.h:
 
 C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/semphr.h:
+
+C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/message_buffer.h:
+
+C:/Users/prvbh/OneDrive/Desktop/Private/Masters/fourth_semester/RTES/Final_project/ADC_test/FreeRTOS/include/stream_buffer.h:
 

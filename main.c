@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "main.h"
 #include "drivers/pinout.h"
 #include "utils/uartstdio.h"
@@ -36,20 +37,25 @@
 #include "driverlib/pin_map.h"
 #include "inc/hw_ints.h"
 #include "inc/hw_adc.h"
+#include "inc/hw_types.h"
 
 // FreeRTOS includes
-#include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
+#include "projdefs.h"
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
-#include "projdefs.h"
+#include "message_buffer.h"
 
 #define SAMPLE_SEQUENCE_NUM     3
 #define OVERSAMPLING_FACTOR     64
 #define SAMPLING_RATE_VAL       8000
-#define BUFFER_SIZE             8
+#define MESSAGE_BUFFER_SIZE     10
 #define EXAMPLE_RUNS            100
+#define ERROR_RETURN_CODE       -1
+#define SUCCESS_RETURN_CODE     0
+#define MAX_BLOCK               (0xffff)
 
 //**********************************GLOBALS SECTION**********************************
 
@@ -58,7 +64,7 @@ volatile uint32_t start_time = 0;
 volatile uint32_t stop_time = 0;
 
 //A-law encoding algo function declaration
-int8_t ALaw_Encode(int16_t);
+int g711_encode(uint32_t);
 void ADC_Init(void);
 void Timer_Init(void);
 
@@ -71,17 +77,16 @@ static uint32_t ADC_data = 0;
 uint32_t output_clock_rate_hz;
 
 //Semaphores
-SemaphoreHandle_t xsemS1 = NULL;
-SemaphoreHandle_t xsemS2 = NULL;
+SemaphoreHandle_t task1_sem = NULL;
 
 //Service declarations
-void EncodingService(void *pvParameters);
 void NetworkingService(void *pvParameters);
 
-//Buffers for data and associated flags
-static uint32_t buffer1[BUFFER_SIZE], buffer2[BUFFER_SIZE];
-static uint32_t encoded_buffer[BUFFER_SIZE];
-static bool buffer_switch_flag = false;
+//Queue handles and associated flags
+static QueueHandle_t xQueue1, xQueue2; //queues to exchange data between ISR and task
+static bool queue_switch_flag = false; //When cleared, use xQueue1. When set, use xQueue2
+
+BaseType_t HigherPriorityTaskWoken = pdFALSE; //Needed for using semaphores and message queues
 
 //**********************************INTERRUPT HANDLERS**********************************
 
@@ -96,10 +101,15 @@ void Timer0IntHandler(void)
      * */
 
     TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT); //Clear interrupt flag
+
+    //Check if xQueue1 is filled
+    if((sample_count % MESSAGE_BUFFER_SIZE) == 0){
+        queue_switch_flag = !queue_switch_flag; //flip flag
+        //Give semaphore to networking task to begin
+        xSemaphoreGiveFromISR(task1_sem, &HigherPriorityTaskWoken);
+    }
+
     ADCProcessorTrigger(ADC0_BASE, SAMPLE_SEQUENCE_NUM); //start conversion by sending trigger
-
-    if((sample_count % BUFFER_SIZE) == 0)
-
     sample_count++; //increment
 }
 
@@ -110,12 +120,23 @@ void ADC0IntHandler(void)
      * Perform the following steps:
      * 1. Clear interrupt flag
      * 2. Read sampled data from register
+     * 3. Perform G.711 encoding
+     * 4. Send message data over FreeRTOS message buffer
      * */
 
     ADCIntClear(ADC0_BASE, SAMPLE_SEQUENCE_NUM);
     ADCSequenceDataGet(ADC0_BASE, SAMPLE_SEQUENCE_NUM, &ADC_data);
 
-    //that's it
+    int encoded_data = g711_encode(ADC_data);
+    //Send data over the appropriate queue based on the flag value
+    if(queue_switch_flag){
+        xQueueSendFromISR(xQueue2, &encoded_data, &HigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(HigherPriorityTaskWoken);
+    }
+    else{
+        xQueueSendFromISR(xQueue1, &encoded_data, &HigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(HigherPriorityTaskWoken);
+    }
 }
 
 //**********************************PERIPHERAL INITIALIZATION**********************************
@@ -197,22 +218,48 @@ void TimerInit(void)
 
 //**********************************SERVICE DEFINITIONS**********************************
 
-void EncodingService(void *pvParameters)
+void NetworkingService(void *pvParameters)
 {
+    int received_data[MESSAGE_BUFFER_SIZE];
+    int idx = 0;
     while(1){
-        if(xSemaphoreTake(xsemS1, MAX_BLOCK) == pdTRUE){
-            //Perform encoding here
+        if(xSemaphoreTake(task1_sem, MAX_BLOCK) == pdTRUE){
+            //Send data here
+            while(idx < MESSAGE_BUFFER_SIZE){
+                if(queue_switch_flag){
+                    xQueueReceive(xQueue2, &(received_data[idx]), portMAX_DELAY);
+                    idx++;
+                }
+                else{
+                    xQueueReceive(xQueue1, &(received_data[idx]), portMAX_DELAY);
+                    idx++;
+                }
+            }
+
+            //clear idx
+            idx = 0;
+            //examine data here while debugging
         }
     }
 }
 
-void NetworkingService(void *pvParameters)
+//**********************************OTHER SUPPORT CODE**********************************
+
+//Performs G.711 encoding on voice data from ADC. Has to be re-entrant
+int g711_encode(uint32_t raw_data)
 {
-    while(1){
-        if(xSemaphoreTake(xsemS2, MAX_BLOCK) == pdTRUE){
-            //Send data here
-        }
-    }
+    const int bias = 0x84; //bias used to convert uint32_t ADC data to int8_t PCM data
+    const int exponent = 132; //used to linearize the quantization curve
+    const uint32_t mask = 0x7FFF; //mask to extract sign and magnitude of voice
+
+    int sign = (raw_data & 0x8000) ? -1 : 1; //Check MSB, which is sign bit in signed integer and determine sign
+    int magnitude = (raw_data & mask) >> 1; //extract magnitude and remove sign
+
+    magnitude = (magnitude + exponent)/256; //Here we linearize the magnitude value
+    magnitude = (magnitude > 127) ? 127 : magnitude; //saturate the magnitude value at MAX VAL of 127
+
+    int pcm_sample = (magnitude * sign) + bias;
+    return pcm_sample;
 }
 
 //**********************************MAIN PROGRAM CODE**********************************
@@ -227,15 +274,15 @@ int main(void)
     ASSERT(output_clock_rate_hz == SYSTEM_CLOCK);
 
 
-    //Clear buffers
-    memset(buffer1, 0, sizeof(buffer1));
-    memset(buffer2, 0, sizeof(buffer2));
-    memset(encoded_buffer, 0, sizeof(encoded_buffer));
-
     //**********************************Initialization**********************************
 
     UARTStdioConfig(0, UART_BAUD_RATE, SYSTEM_CLOCK);//Initialize Serial UART port for debug
     UARTprintf("ADC test\r\n");
+
+    //create queues
+    xQueue1 = xQueueCreate(MESSAGE_BUFFER_SIZE, sizeof(int));
+    xQueue2 = xQueueCreate(MESSAGE_BUFFER_SIZE, sizeof(int));
+
     ADCInit();//Call ADC initialization function
     TimerInit();
 
@@ -243,9 +290,6 @@ int main(void)
 
     // Initialize the GPIO pins for the Launchpad
     PinoutSet(false, false);
-
-    xTaskCreate(EncodingService, (const portCHAR *)"Encoding Service",
-                        configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
 
     xTaskCreate(NetworkingService, (const portCHAR *)"Networking Service",
                         configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, NULL);
