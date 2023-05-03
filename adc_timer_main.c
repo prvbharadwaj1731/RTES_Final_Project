@@ -55,6 +55,9 @@
 // Demo Task declarations
 void demoLEDTask(void *pvParameters);
 void demoSerialTask(void *pvParameters);
+
+int g711_encode(uint32_t);
+
 //*****************************************************************************
 //
 // A set of flags.  The flag bits are defined as follows:
@@ -118,10 +121,44 @@ uint32_t get_len()
 
 }
 
+//Performs G.711 encoding on voice data from ADC. Has to be re-entrant
+int g711_encode(uint32_t raw_data)
+{
+    const int bias = 0x84; //bias used to convert uint32_t ADC data to int8_t PCM data
+    const int exponent = 132; //used to linearize the quantization curve
+    const uint32_t mask = 0x7FFF; //mask to extract sign and magnitude of voice
+
+    int sign = (raw_data & 0x8000) ? -1 : 1; //Check MSB, which is sign bit in signed integer and determine sign
+    int magnitude = (raw_data & mask) >> 1; //extract magnitude and remove sign
+
+    magnitude = (magnitude + exponent)/256; //Here we linearize the magnitude value
+    magnitude = (magnitude > 127) ? 127 : magnitude; //saturate the magnitude value at MAX VAL of 127
+
+    int pcm_sample = (magnitude * sign) + bias;
+    return pcm_sample;
+}
+
+//Use this to decode
+/*
+ * uint16_t g711_decode(int pcm_sample)
+{
+    const int bias = 0x84; // bias for converting from unsigned 8-bit value to signed magnitude
+    const int exponent = 132; // exponent for linearizing the quantization curve
+    int sign = (pcm_sample & 0x80) ? -1 : 1; // extract the sign of the PCM sample
+    int magnitude = pcm_sample - bias; // convert the unsigned 8-bit value to a signed magnitude
+    magnitude *= sign; // apply the sign to the magnitude
+    magnitude <<= 1; // left-shift the magnitude by 1 bit
+    magnitude += exponent; // de-linearize the quantization curve
+    uint16_t voice_data = magnitude; // convert the magnitude to a uint16_t
+    return voice_data;
+}
+ * */
+
 uint32_t adc_start,adc_end,adc_diff;
 void ADCIntHandler()
 {
     uint32_t res;
+    int encoded_data = 0;
     static uint32_t cntr=0;
     ADCIntClear(ADC0_BASE, 3);
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -130,14 +167,13 @@ void ADCIntHandler()
     //
 
     ADCSequenceDataGet(ADC0_BASE, 3, &res);
-
-
+    encoded_data = g711_encode(res);
 
 
     //if(wr==rd)return;
     //cntr=(cntr+1)%26;
     //cbuff[wr]='A'+cntr;
-    cbuff[wr]=(uint16_t)res;
+    cbuff[wr]=(uint16_t)encoded_data;
     wr=(wr+1)&31;
     samples++;
 
